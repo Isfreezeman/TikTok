@@ -1,0 +1,95 @@
+<!DOCTYPE html>  
+<html lang="ru">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">  
+    <title>Профиль</title>  
+    <script src="https://cdn.tailwindcss.com"></script>  
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">  
+</head>  
+<body class="bg-black text-white">  
+  
+    <div class="max-w-screen-lg mx-auto p-4">  
+        <!-- Кнопка назад -->  
+        <div class="flex items-center justify-between mb-4">  
+            <a href="home.html"><i class="fas fa-arrow-left text-xl cursor-pointer"></i></a>  
+        </div>  
+  
+        <!-- Блок профиля -->  
+        <div class="flex flex-col items-center mb-4">  
+            <img id="avatar" class="w-24 h-24 bg-gray-600 rounded-full mb-2" src="" alt="Аватар">  
+            <div id="authorName" class="text-lg">@имяпользователя</div>  
+        </div>  
+  
+        <!-- Статистика аккаунта -->  
+        <div class="flex justify-around mb-4">  
+            <div class="text-center">  
+                <div id="totalComments" class="text-lg">0</div>  
+                <div class="text-sm text-gray-400">Комментариев</div>  
+            </div>  
+            <div class="text-center">  
+                <div id="totalLikes" class="text-lg">0</div>  
+                <div class="text-sm text-gray-400">Лайков</div>  
+            </div>  
+            <div class="text-center">  
+                <div id="totalDislikes" class="text-lg">0</div>  
+                <div class="text-sm text-gray-400">Дизлайков</div>  
+            </div>  
+        </div>  
+  
+        <!-- Значок сетки -->  
+        <div class="flex justify-center mb-4">  
+            <i class="fas fa-th text-xl"></i>  
+        </div>  
+  
+        <!-- Список видео -->  
+        <div id="videoList" class="grid grid-cols-3 gap-1"></div>  
+    </div>  
+  
+    <script>  
+async function loadProfile() {  
+    const params = new URLSearchParams(window.location.search);  
+    const author = params.get("author");  
+    if (!author) return;  
+
+    document.getElementById("authorName").textContent = "@" + author;  
+    document.getElementById("avatar").src = `ava.php?n=${encodeURIComponent(author)}`;  
+
+    const response = await fetch(`get_videos_by_author.php?author=${encodeURIComponent(author)}`);  
+    const videos = await response.json();  
+
+    let totalLikes = 0;  
+    let totalDislikes = 0;  
+    let totalComments = 0;  
+
+    document.getElementById("videoList").innerHTML = videos.map(video => {  
+        totalLikes += Number(video.likes);  
+        totalDislikes += Number(video.dislikes);  
+        totalComments += Number(video.comments);  
+
+        return `  
+            <div class="relative cursor-pointer" onclick="openVideo('${video.id}')">  
+                <video src="${video.video}" class="w-full h-full object-cover rounded-lg" muted></video>  
+                <div class="absolute bottom-0 left-0 p-1 text-white text-sm bg-black bg-opacity-50">  
+                    <i class="fas fa-thumbs-up"></i> ${video.likes} |   
+                    <i class="fas fa-thumbs-down"></i> ${video.dislikes}  
+                </div>  
+            </div>  
+        `;  
+    }).join("");  
+
+    document.getElementById("totalLikes").innerText = totalLikes.toLocaleString();  
+    document.getElementById("totalDislikes").innerText = totalDislikes.toLocaleString();  
+    document.getElementById("totalComments").innerText = totalComments.toLocaleString();  
+}
+        // Открытие видео по клику  
+        function openVideo(id) {  
+            window.location.href = `home.html?video=${id}`;  
+        }  
+  
+        // Загружаем профиль при открытии страницы  
+        loadProfile();  
+    </script>  
+  
+</body>  
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Web Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-black text-white h-screen flex flex-col justify-between">
+    <div class="p-4">
+        <div class="flex items-center">
+            <a href="home.html" class="text-white text-2xl"><i class="fas fa-arrow-left"></i></a>
+        </div>
+        <div class="mt-4">
+            <input class="bg-black text-gray-400 text-2xl w-full focus:outline-none" placeholder="Добавьте описание..." type="text" id="description" maxlength="15"/>
+        </div>
+        <div class="mt-4 flex justify-end">
+            <div class="relative">
+                <img alt="A person with a heart icon and text overlay" class="w-24 h-36 rounded-lg" id="video-thumbnail" src="https://placehold.co/96x144" />
+                <div class="absolute top-2 left-2 text-white text-sm">Выбрать</div>
+                <div class="absolute bottom-2 left-2 text-white text-sm">Видео</div>
+                <input accept="video/*" class="hidden" id="video-input" type="file"/>
+            </div>
+        </div>
+    </div>
+    <div class="p-4 flex items-center">
+        <input class="mr-2" id="accept" type="checkbox"/>
+        <label class="text-white text-sm" for="accept">Я подтверждаю, что согласен со всей политикой конфиденциальности :)</label>
+    </div>
+    <div class="p-4 flex justify-center">
+        <button class="bg-pink-500 text-white text-lg py-2 px-6 rounded-full" id="publish-btn">Опубликовать</button>
+    </div>
+    <div class="p-4">
+        <div class="w-full bg-gray-200 rounded-full h-2.5">
+            <div id="progress-bar" class="bg-pink-500 h-2.5 rounded-full" style="width: 0%;"></div>
+        </div>
+    </div>
+    <script>
+        document.getElementById('video-thumbnail').addEventListener('click', function() {
+            document.getElementById('video-input').click();
+        });
+
+        document.getElementById('video-input').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const videoURL = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                video.src = videoURL;
+                video.addEventListener('loadeddata', function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const context = canvas.getContext('2d');
+                    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const thumbnailURL = canvas.toDataURL();
+                    document.getElementById('video-thumbnail').src = thumbnailURL;
+                    URL.revokeObjectURL(videoURL);
+                });
+            }
+        });
+
+        document.getElementById('publish-btn').addEventListener('click', function() {
+            const videoInput = document.getElementById('video-input');
+            const description = document.getElementById('description').value;
+            const accept = document.getElementById('accept').checked;
+
+            if (!videoInput.files.length) {
+                alert('Выберите видео');
+                return;
+            }
+
+            // Проверка на длину описания
+            if (description.length === 0 || description.length > 15) {
+                alert('Описание должно содержать от 1 до 15 символов');
+                return;
+            }
+
+            // Проверка на допустимые символы (буквы, цифры, смайлики)
+            const regex = /^[a-zA-Zа-яА-ЯёЁ0-9\s\u{1F600}-\u{1F64F}]{1,15}$/u;
+            if (!regex.test(description)) {
+                alert('Описание должно содержать только буквы, цифры и смайлики');
+                return;
+            }
+
+            if (!accept) {
+                alert('Согласитесь с политикой конфиденциальности');
+                return;
+            }
+
+            const formData = new FormData();
+            const file = videoInput.files[0];
+            const username = localStorage.getItem('login') || 'unknown'; // логин из localStorage
+
+            formData.append('video', file);
+            formData.append('description', description);
+            formData.append('username', username);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'upload.php', true);
+
+            // Обработчик загрузки
+            xhr.upload.addEventListener('progress', function(event) {
+                if (event.lengthComputable) {
+                    const percent = (event.loaded / event.total) * 100;
+                    document.getElementById('progress-bar').style.width = percent + '%';
+                }
+            });
+
+            xhr.onload = function() {
+                const data = JSON.parse(xhr.responseText);
+                if (data.success) {
+                    alert('Видео успешно загружено');
+                    window.location.href = 'home.html'; // Перенаправление на главную страницу
+                } else {
+                    alert('Ошибка при загрузке видео: ' + data.message);
+                }
+            };
+
+            xhr.send(formData);
+        });
+    </script>
+</body>
+</html>

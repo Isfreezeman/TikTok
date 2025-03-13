@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex items-center justify-center min-h-screen bg-white">
+    <div class="w-full max-w-xs">
+        <h2 class="text-lg font-bold mb-2">Зарегистрироваться / Войти</h2>
+        <div class="border-b-2 border-black mb-4"></div>
+        <form class="space-y-4">
+            <div>
+                <input id="login" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" type="text" placeholder="Имя пользователя">
+            </div>
+            <div>
+                <input id="password" class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" type="password" placeholder="Пароль">
+            </div>
+            <div>
+                <button id="register" class="w-full py-2 bg-gray-200 text-gray-500 font-semibold rounded cursor-pointer" type="button">Зарегистрироваться</button>
+            </div>
+            <div>
+                <button id="loginBtn" class="w-full py-2 bg-gray-200 text-gray-500 font-semibold rounded cursor-pointer" type="button">Войти</button>
+            </div>
+        </form>
+        <p id="message" class="text-center mt-4 text-red-500"></p>
+    </div>
+
+    <script>
+        async function sendRequest(action) {
+            const login = document.getElementById("login").value.trim();
+            const password = document.getElementById("password").value.trim();
+            const messageEl = document.getElementById("message");
+
+            if (!login || !password) {
+                messageEl.textContent = "Введите логин и пароль!";
+                return;
+            }
+
+            const response = await fetch("server.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action, login, password })
+            });
+
+            const result = await response.json();
+            messageEl.textContent = result.message;
+
+            if (result.status === "success") {
+                localStorage.setItem("login", login);
+                localStorage.setItem("password", password);
+                messageEl.textContent += " Перенаправление...";
+                setTimeout(() => window.location.href = "home.html", 0);
+            }
+        }
+
+        document.getElementById("register").addEventListener("click", () => sendRequest("register"));
+        document.getElementById("loginBtn").addEventListener("click", () => sendRequest("login"));
+
+        async function autoLogin() {
+            const login = localStorage.getItem("login");
+            const password = localStorage.getItem("password");
+            if (login && password) {
+                const response = await fetch("server.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "login", login, password })
+                });
+
+                const result = await response.json();
+                if (result.status === "success") {
+                    window.location.href = "home.html";
+                }
+            }
+        }
+
+        autoLogin();
+    </script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Профиль</title>
+    <style>
+        body {
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            justify-content: center;
+        }
+
+        .header {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+
+        .back-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+        }
+
+        .avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            width: 90%;
+            max-width: 300px;
+            margin: 10px;
+            padding: 12px;
+            background: #ff2d55;
+            color: white;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: 0.3s;
+        }
+
+        .btn:hover {
+            background: #ff3d65;
+        }
+
+        .popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #222;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            width: 90%;
+            max-width: 300px;
+        }
+
+        .popup h2 {
+            margin: 0 0 15px;
+        }
+
+        .popup input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .popup button {
+            margin-top: 10px;
+            background: #ff2d55;
+            color: white;
+            border: none;
+            padding: 10px;
+            width: 100%;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .popup button:hover {
+            background: #ff3d65;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <button class="back-btn" onclick="window.location.href='index.html'">← Назад</button>
+    </div>
+
+    <img id="avatar" class="avatar" src="" alt="Аватарка">
+    <input type="file" id="avatarUpload" style="display: none;">
+
+    <button class="btn" onclick="showPopup('passwordPopup')">Изменить пароль</button>
+    <button class="btn" onclick="showPopup('loginPopup')">Изменить логин</button>
+
+    <!-- Окно смены пароля -->
+    <div id="passwordPopup" class="popup">
+        <h2>Смена пароля</h2>
+        <input type="password" id="oldPass" placeholder="Старый пароль">
+        <input type="password" id="newPass" placeholder="Новый пароль">
+        <button onclick="changePassword()">Сменить</button>
+        <button onclick="closePopup('passwordPopup')">Отмена</button>
+    </div>
+
+    <!-- Окно смены логина -->
+    <div id="loginPopup" class="popup">
+        <h2>Смена логина</h2>
+        <input type="text" id="newLogin" placeholder="Новый логин">
+        <input type="password" id="passwordConfirm" placeholder="Пароль">
+        <button onclick="changeLogin()">Сменить</button>
+        <button onclick="closePopup('loginPopup')">Отмена</button>
+    </div>
+
+    <script>
+        const login = localStorage.getItem("login");
+        if (!login) {
+            window.location.href = "home.html";
+        }
+
+        document.getElementById("avatar").src = `http://a1087175.xsph.ru/ava.php?n=${login}`;
+
+        document.getElementById("avatar").onclick = function () {
+            document.getElementById("avatarUpload").click();
+        };
+
+        document.getElementById("avatarUpload").onchange = function (event) {
+            const file = event.target.files[0];
+            if (file) {
+                const formData = new FormData();
+                formData.append("avatar", file);
+                formData.append("login", login);
+
+                fetch("upload_avatar.php", { method: "POST", body: formData })
+                    .then(response => response.text())
+                    .then(data => {
+                        alert(data);
+                        document.getElementById("avatar").src = `users/${login}/a.png?rand=${Math.random()}`;
+                    });
+            }
+        };
+
+        function showPopup(id) {
+            document.getElementById(id).style.display = "block";
+        }
+
+        function closePopup(id) {
+            document.getElementById(id).style.display = "none";
+        }
+
+        function changePassword() {
+            const oldPass = document.getElementById("oldPass").value;
+            const newPass = document.getElementById("newPass").value;
+
+            fetch("change_password.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `login=${login}&oldPass=${oldPass}&newPass=${newPass}`
+            })
+            .then(response => response.text())
+            .then(data => alert(data));
+        }
+
+        function changeLogin() {
+            const newLogin = document.getElementById("newLogin").value;
+            const password = document.getElementById("passwordConfirm").value;
+
+            fetch("change_login.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: `login=${login}&password=${password}&newLogin=${newLogin}`
+            })
+            .then(response => response.text())
+            .then(data => {
+                if (data === "Логин изменен") {
+                    localStorage.removeItem("login");
+                    window.location.href = "index.html";
+                } else {
+                    alert(data);
+                }
+            });
+        }
+    </script>
+</body>
+</html>

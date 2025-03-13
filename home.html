@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>TikTok Clone</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css" rel="stylesheet">
+  <style>
+    body { overscroll-behavior: contain; touch-action: manipulation; }
+    video { object-fit: cover; }
+    .active { color: red; }
+  </style>
+</head>
+<body class="bg-black text-white font-sans relative flex flex-col items-center justify-center h-screen">
+  
+  <!-- Видео -->
+  <video id="video" class="absolute top-0 left-0 w-full h-full" autoplay playsinline></video>
+  
+  <!-- UI -->
+  <div class="absolute right-4 bottom-32 space-y-6">
+    <div class="flex flex-col items-center">
+      <img id="avatar" class="rounded-full w-12 h-12 cursor-pointer" src="" alt="Avatar" onclick="openProfile()">
+      <div class="bg-pink-500 rounded-full p-1 mt-1">
+        <i class="fas fa-plus text-white"></i>
+      </div>
+    </div>
+    <div class="flex flex-col items-center">
+      <i id="likeBtn" class="fas fa-heart text-2xl cursor-pointer"></i>
+      <span id="likeCount"></span>
+    </div>
+    <div class="flex flex-col items-center">
+      <i id="commentBtn" class="fas fa-comment-dots text-2xl cursor-pointer"></i>
+      <span id="commentCount">0</span>
+    </div>
+    <div class="flex flex-col items-center">
+      <i id="dislikeBtn" class="fas fa-thumbs-down text-2xl cursor-pointer"></i>
+      <span id="dislikeCount"></span>
+    </div>
+  </div>
+
+  <!-- Описание -->
+  <div class="absolute bottom-16 left-4 right-4">
+    <div class="text-sm">
+      <span id="author" class="font-bold"></span> · <span>только что</span>
+    </div>
+    <div id="description" class="text-sm mt-1"></div>
+  </div>
+
+  <!-- Музыка -->
+  <!-- Нижняя панель -->
+  <div class="w-full flex justify-between items-center p-4 bg-black bg-opacity-50 fixed bottom-0">
+      <a href="index.html">
+          <i class="fas fa-home text-white text-2xl"></i>
+      </a>
+      <a href="explore.html">
+          <i class="fas fa-compass text-white text-2xl"></i>
+      </a>
+      <a href="upload.html">
+          <i class="fas fa-plus-circle text-white text-4xl"></i>
+      </a>
+      <a href="inbox.html">
+          <i class="fas fa-inbox text-white text-2xl"></i>
+      </a>
+      <a id="profileLink">
+          <i class="fas fa-user text-white text-2xl"></i>
+      </a>
+  </div>
+
+  <!-- Комментарии -->
+  <div id="commentBox" class="hidden fixed inset-0 bg-black bg-opacity-80 flex flex-col items-center p-4">
+    <div class="w-full max-w-md bg-white p-4 rounded-lg">
+      <h2 class="text-black font-bold">Комментарии</h2>
+      <div id="commentsList" class="mt-2 text-black h-40 overflow-auto border p-2"></div>
+      <input id="commentInput" class="w-full border p-2 mt-2" placeholder="Ваш комментарий">
+      <button id="sendComment" class="w-full bg-blue-500 text-white p-2 mt-2">Отправить</button>
+      <button id="closeComment" class="w-full bg-gray-500 text-white p-2 mt-2">Закрыть</button>
+    </div>
+  </div>
+
+  <script>
+    let currentVideo = "";
+
+    async function loadVideo(videoId = null) {
+      let url = "get_video.php";
+      if (videoId) {
+        url += `?id=${videoId}`;
+      }
+      const response = await fetch(url);
+      const data = await response.json();
+
+      // Устанавливаем ссылку на профиль
+      document.getElementById("profileLink").href = 
+          "http://a1087175.xsph.ru/profile.html?author=" + 
+          encodeURIComponent(localStorage.getItem("login") || "Аноним");
+      document.getElementById("video").src = data.video;
+      document.getElementById("author").textContent = data.author;
+      document.getElementById("description").textContent = data.description;
+      document.getElementById("likeCount").textContent = data.likes;
+      document.getElementById("dislikeCount").textContent = data.dislikes;
+      document.getElementById("commentCount").textContent = data.comments;
+      document.getElementById("avatar").src = data.avatar;
+
+      currentVideo = data.id;
+      checkUserLike();
+    }
+
+    function checkUserLike() {
+      const likedVideos = JSON.parse(localStorage.getItem("likedVideos")) || {};
+      document.getElementById("likeBtn").classList.toggle("active", likedVideos[currentVideo] === "like");
+      document.getElementById("dislikeBtn").classList.toggle("active", likedVideos[currentVideo] === "dislike");
+    }
+
+    async function sendLike(type) {
+      let likedVideos = JSON.parse(localStorage.getItem("likedVideos")) || {};
+      if (likedVideos[currentVideo]) return; // Если уже лайкнули/дизлайкнули — выходим
+
+      likedVideos[currentVideo] = type;
+      localStorage.setItem("likedVideos", JSON.stringify(likedVideos));
+
+      await fetch("update_likes.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentVideo, type }),
+      });
+
+      // Обновляем только лайки/дизлайки, не загружая новое видео
+      if (type === "like") {
+        document.getElementById("likeCount").textContent = Number(document.getElementById("likeCount").textContent) + 1;
+      } else {
+        document.getElementById("dislikeCount").textContent = Number(document.getElementById("dislikeCount").textContent) + 1;
+      }
+
+      checkUserLike();
+    }
+
+    async function loadComments() {
+      const response = await fetch(`get_comments.php?id=${currentVideo}`);
+      const comments = await response.json();
+      document.getElementById("commentsList").innerHTML = comments.map(c => `<p><b>${c.user}:</b> ${c.text}</p>`).join("");
+    }
+
+    async function sendComment() {
+      const comment = document.getElementById("commentInput").value;
+      if (!comment) return;
+      await fetch("add_comment.php", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentVideo, user: localStorage.getItem("login") || "Аноним", text: comment }),
+      });
+      loadComments();
+    }
+
+   function checkReklama() {
+      
+    } 
+
+    // Открыть профиль
+    function openProfile() {
+      const author = document.getElementById("author").textContent;
+      window.location.href = `profile.html?author=${encodeURIComponent(author)}`;
+    }
+
+    // Проверяем параметр video в URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const videoId = urlParams.get("video");
+
+    if (videoId) {
+      loadVideo(videoId); // Загружаем видео по параметру video
+    } else {
+      loadVideo(); // Загружаем случайное видео, если параметр не передан
+    }
+
+    document.getElementById("likeBtn").addEventListener("click", () => sendLike("like"));
+    document.getElementById("dislikeBtn").addEventListener("click", () => sendLike("dislike"));
+    document.getElementById("commentBtn").addEventListener("click", () => {
+      document.getElementById("commentBox").classList.remove("hidden");
+      loadComments();
+    });
+    document.getElementById("closeComment").addEventListener("click", () => {
+      document.getElementById("commentBox").classList.add("hidden");
+    });
+    document.getElementById("sendComment").addEventListener("click", sendComment);
+
+    document.addEventListener("touchstart", e => startY = e.touches[0].clientY);
+    document.addEventListener("touchend", e => {
+      if (startY - e.changedTouches[0].clientY > 50) {
+        loadVideo(); // Загружаем новое видео
+      } else if (e.changedTouches[0].clientY - startY > 50) {
+        loadVideo(); // Загружаем новое видео
+      }
+    });
+
+    // Добавляем обработчик события click на видео
+    document.getElementById("video").addEventListener("click", () => {
+      const video = document.getElementById("video");
+      if (video.paused) {
+        video.play();
+      } else {
+        video.pause();
+      }
+    });
+
+    checkReklama();
+  </script>
+
+</body>
+</html>
